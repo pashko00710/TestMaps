@@ -10,14 +10,11 @@ import android.support.v7.widget.CardView;
 import android.support.v7.widget.Toolbar;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -25,12 +22,21 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import me.uptop.testmaps2.R;
+import me.uptop.testmaps2.data.managers.DataManager;
+import me.uptop.testmaps2.data.storage.realm.PointsRealm;
 
 public class MapsActivity extends AppCompatActivity implements
-        OnMapReadyCallback, GoogleMap.OnMapClickListener, GoogleMap.OnMapLongClickListener, View.OnClickListener {
+        OnMapReadyCallback, GoogleMap.OnMapClickListener, GoogleMap.OnMapLongClickListener,
+        View.OnClickListener, GoogleMap.OnInfoWindowClickListener {
     private static final String LATITUDE = "LATITUDE";
     private static final String LONGITUDE = "LONGITUDE";
+    private static final String MODE = "MODE";
+    private static final String TITLE = "TITLE";
+    private static final String DESCRIPTION = "DESCRIPTION";
 
     private GoogleMap mMap;
     private Toolbar mToolbar;
@@ -38,10 +44,12 @@ public class MapsActivity extends AppCompatActivity implements
     private TextView mToolbarText;
     private CardView mCard;
     private Button mButtonAdd;
-    Handler handler;
     Runnable afterExe;
     Marker marker;
+    DataManager dataManager = DataManager.getInstance();
+    List<PointsRealm> points = new ArrayList<>();
 
+    //region =========================== LifeCycle =====================
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,58 +64,86 @@ public class MapsActivity extends AppCompatActivity implements
         mCard = (CardView) findViewById(R.id.card_add_point);
         mButtonAdd = (Button) findViewById(R.id.btn_add_point);
 
-
         setTitle(getResources().getString(R.string.app_name));
 
         setupToolbar();
 
-
-        //для перехода на другую активность с точками
         mToolbarText.setOnClickListener(this);
         mButtonAdd.setOnClickListener(this);
-
     }
+    //endregion
 
-
-
+    //region =========================== Events =====================
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.my_points_btn:
-                Log.e("click", "onClick: ");
+                startListPointsActivity();
                 break;
             case R.id.btn_add_point:
-                startAddPointActivity();
+                startAddPointActivity("add", marker);
                 break;
             default:
                 break;
         }
     }
 
-    private void setupToolbar() {
-        setSupportActionBar(mToolbar);
-        mActionBar = getSupportActionBar();
+    //region =========================== Listeners =====================
+    @Override
+    public void onMapClick(LatLng latLng) {
+        final Handler handler = new Handler();
+        final Marker emptyMarker = mMap.addMarker(new MarkerOptions().position(latLng).title(""));
+        marker = emptyMarker;
+        emptyMarker.showInfoWindow();
+        showCard();
+        handler.postDelayed(() -> {
+            emptyMarker.setVisible(false);
+            handler.postDelayed(afterExe,0);
+        }, 2000);
+        afterExe = () -> hideCard();
     }
+
+    @Override
+    public void onMapLongClick(LatLng latLng) {
+        mMap.addMarker(new MarkerOptions().position(latLng).title("")).showInfoWindow();
+    }
+
+    @Override
+    public void onInfoWindowClick(Marker marker) {
+        startAddPointActivity("read", marker);
+    }
+
+    //endregion
+
+    //endregion
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        points = dataManager.getRealmManager().getAllQuotesFromRealm();
 
-        // Add a marker in Sydney and move the camera
-        LatLng sydney = new LatLng(-34, 151);
-        LatLng lul = new LatLng(-33, 150);
-        Log.e("lul", "onMapReady: "+lul.latitude+"  "+lul.longitude);
-        mMap.addMarker(new MarkerOptions().position(lul).title("lul").snippet("Desc lul"));
-        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney").snippet("Desc Sydney fdsfsdfsdfs"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(lul));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
-
+        for (PointsRealm point: points) {
+            mMap.addMarker(new MarkerOptions().position(new LatLng(point.getLatitude(), point.getLongitude()))
+                    .title(point.getTitle())
+                    .snippet(point.getDescription()));
+        }
 
         mMap.setInfoWindowAdapter(new CustomInfoWindowAdapter());
         mMap.setOnMapClickListener(this);
         mMap.setOnMapLongClickListener(this);
+        mMap.setOnInfoWindowClickListener(this);
     }
 
+    private void startListPointsActivity() {
+        Intent intent = new Intent(this, ListPointsActivity.class);
+        startActivity(intent);
+        finish();
+    }
+
+    private void setupToolbar() {
+        setSupportActionBar(mToolbar);
+        mActionBar = getSupportActionBar();
+    }
 
     public void showCard() {
         mCard.setVisibility(View.VISIBLE);
@@ -117,63 +153,18 @@ public class MapsActivity extends AppCompatActivity implements
         mCard.setVisibility(View.GONE);
     }
 
-    @Override
-    public void onMapClick(LatLng latLng) {
-//        if(handler != null) handler.removeCallbacksAndMessages(null);
-        final Handler handler = new Handler();
-        final Marker emptyMarker = mMap.addMarker(new MarkerOptions().position(latLng).title(""));
-        marker = emptyMarker;
-        emptyMarker.showInfoWindow();
-        showCard();
-        handler.postDelayed(() -> {
-            // Actions to do after 10 seconds
-            emptyMarker.setVisible(false);
-            handler.postDelayed(afterExe,0);
-        }, 2000);
-
-
-        afterExe = () -> hideCard();
-    }
-
-    @Override
-    public void onMapLongClick(LatLng latLng) {
-        mMap.addMarker(new MarkerOptions().position(latLng).title("")).showInfoWindow();
-        Log.e("lul", "onMapLongClick: "+ latLng);
-    }
-
-    public void startAddPointActivity() {
+    public void startAddPointActivity(String mode, Marker marker) {
         Intent intent = new Intent(this, AddPointActivity.class);
+        intent.putExtra(TITLE, marker.getTitle());
+        intent.putExtra(DESCRIPTION, marker.getSnippet());
+        intent.putExtra(MODE, mode);
         intent.putExtra(LATITUDE, marker.getPosition().latitude);
         intent.putExtra(LONGITUDE, marker.getPosition().longitude);
         startActivity(intent);
         finish();
     }
 
-//    @Override
-//    public void onInfoWindowClick(Marker marker) {
-//
-//    }
-//
-//    @Override
-//    public void onInfoWindowClose(Marker marker) {
-//
-//    }
-//
-//    @Override
-//    public void onInfoWindowLongClick(Marker marker) {
-//
-//    }
-//
-//    @Override
-//    public boolean onMarkerClick(Marker marker) {
-//        return false;
-//    }
-
-
     class CustomInfoWindowAdapter implements GoogleMap.InfoWindowAdapter {
-
-        // These are both viewgroups containing an ImageView with id "badge" and two TextViews with id
-        // "title" and "snippet".
         private final View mWindow;
 
         private final View mContents;
@@ -185,20 +176,12 @@ public class MapsActivity extends AppCompatActivity implements
 
         @Override
         public View getInfoWindow(Marker marker) {
-//            if (mOptions.getCheckedRadioButtonId() != R.id.custom_info_window) {
-//                // This means that getInfoContents will be called.
-//                return null;
-//            }
             render(marker, mWindow);
             return mWindow;
         }
 
         @Override
         public View getInfoContents(Marker marker) {
-//            if (mOptions.getCheckedRadioButtonId() != R.id.custom_info_contents) {
-//                // This means that the default info contents will be used.
-//                return null;
-//            }
             render(marker, mContents);
             return mContents;
         }
@@ -212,7 +195,6 @@ public class MapsActivity extends AppCompatActivity implements
                 // Passing 0 to setImageResource will clear the image view.
                 badge = R.drawable.ic_info_black_24dp;
             }
-//            badge = R.drawable.badge_wa;
             ImageView imageBagde = (ImageView) view.findViewById(R.id.badge);
             imageBagde.setImageResource(badge);
 
@@ -229,17 +211,13 @@ public class MapsActivity extends AppCompatActivity implements
 
             String snippet = marker.getSnippet();
             TextView snippetUi = ((TextView) view.findViewById(R.id.snippet));
-            Toast.makeText(MapsActivity.this, snippet, Toast.LENGTH_SHORT).show();
             if (snippet != null) {
                 SpannableString snippetText = new SpannableString(snippet);
                 snippetText.setSpan(new ForegroundColorSpan(Color.MAGENTA), 0, snippet.length(), 0);
-//                snippetText.setSpan(new ForegroundColorSpan(Color.BLUE), 12, snippet.length(), 0);
                 snippetUi.setText(snippetText);
             } else {
                 snippetUi.setText("");
             }
         }
     }
-
-
 }

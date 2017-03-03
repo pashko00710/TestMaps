@@ -1,7 +1,5 @@
 package me.uptop.testmaps2.data.managers;
 
-import android.util.Log;
-
 import java.util.List;
 
 import io.realm.Realm;
@@ -18,20 +16,15 @@ public class RealmManager {
 
         PointsRealm pointsRealm =  new PointsRealm(pointsDto);
 
-        Log.e("aq", "saveProductResponseToRealm: "+pointsRealm.getId());
-
         realm.executeTransaction(realm1 -> realm1.insertOrUpdate(pointsRealm));
-
-        Log.e("aq", "saveProductResponseToRealm: "+getAllQuotesFromRealm());
 
         realm.close();
     }
 
     public List<PointsRealm> getAllQuotesFromRealm() {
-        RealmResults<PointsRealm> manageProduct = getQueryRealmInstance().where(PointsRealm.class).findAllAsync();
-        Log.e("lul", "getAllQuotesFromRealm: "+manageProduct.size());
-//        List<PointsRealm> points = mRealmInstance.copyFromRealm(manageProduct);
-        return manageProduct;
+        RealmResults<PointsRealm> manageProduct = getQueryRealmInstance().where(PointsRealm.class).findAll();
+        List<PointsRealm> points = mRealmInstance.copyFromRealm(manageProduct);
+        return points;
     }
 
 

@@ -43,6 +43,10 @@
         <activity
             android:name=".ui.activities.AddPointActivity"
             android:label="@string/title_activity_add_point"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+        <activity
+            android:name=".ui.activities.ListPointsActivity"
+            android:label="@string/title_activity_list_points"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"></activity>
     </application>
 

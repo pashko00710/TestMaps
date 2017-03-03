@@ -1,13 +1,13 @@
 package me.uptop.testmaps2.data.storage.dto;
 
 public class PointsDto {
-    private int id;
+    private String id;
     private String title;
     private String description;
     private double latitude;
     private double longitude;
 
-    public PointsDto(int id, String title, String description, double latitude, double longitude) {
+    public PointsDto(String id, String title, String description, double latitude, double longitude) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -15,11 +15,11 @@ public class PointsDto {
         this.longitude = longitude;
     }
 
-    public int getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(String id) {
         this.id = id;
     }
 
